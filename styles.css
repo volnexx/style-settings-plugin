@@ -9,35 +9,23 @@
   border-color: var(--interactive-accent);
 }
 
-/*
- * Desktop background hierarchy.
- *
- * The mobile version intentionally keeps the OLED-black background generated
- * by main.js. On desktop we give the workspace several very dark layers that
- * follow the current hue, so panes no longer merge into one #000000 surface.
- * !important is deliberate: main.js injects the base Minimal variables after
- * the static plugin stylesheet, and these desktop-only values must win.
- */
+/* Desktop: keep every major workspace surface pure black. */
 body.theme-dark:not(.is-mobile),
 body.theme-dark.css-settings-manager:not(.is-mobile) {
-  --background-primary: hsl(var(--sscc-h) 18% 2.2%) !important;
-  --background-primary-alt: hsl(var(--sscc-h) 20% 3.2%) !important;
-  --background-secondary: hsl(var(--sscc-h) 22% 4.8%) !important;
-  --background-secondary-alt: hsl(var(--sscc-h) 24% 7.2%) !important;
+  --background-primary: #000000 !important;
+  --background-primary-alt: #000000 !important;
+  --background-secondary: #000000 !important;
+  --background-secondary-alt: #000000 !important;
 
-  --bg1: hsl(var(--sscc-h) 18% 2.2%) !important;
-  --base: hsl(var(--sscc-h) 18% 2.2%) !important;
-  --bg2: hsl(var(--sscc-h) 22% 4.8%) !important;
-  --bg3: hsl(var(--sscc-h) 24% 7.2%) !important;
+  --bg1: #000000 !important;
+  --base: #000000 !important;
+  --bg2: #000000 !important;
+  --bg3: #000000 !important;
 
-  --background-modifier-border: hsl(var(--sscc-h) 28% 12%) !important;
-  --background-modifier-border-hover: hsl(var(--sscc-h) 34% 18%) !important;
-  --background-modifier-hover: hsl(var(--sscc-h) 26% 9%) !important;
-  --background-modifier-active-hover: hsl(var(--sscc-h) 34% 12%) !important;
-  --background-modifier-form-field: hsl(var(--sscc-h) 20% 5.5%) !important;
-  --background-modifier-form-field-highlighted: hsl(var(--sscc-h) 26% 8%) !important;
+  --titlebar-background: #000000 !important;
+  --titlebar-background-focused: #000000 !important;
+  --tab-container-background: #000000 !important;
 
-  --titlebar-background: hsl(var(--sscc-h) 20% 3.2%) !important;
-  --titlebar-background-focused: hsl(var(--sscc-h) 22% 4.2%) !important;
-  --tab-container-background: hsl(var(--sscc-h) 20% 3.2%) !important;
+  --background-modifier-form-field: #000000 !important;
+  --background-modifier-form-field-highlighted: #000000 !important;
 }

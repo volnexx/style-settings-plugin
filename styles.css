@@ -1,0 +1,9 @@
+.sscc-status {
+  margin: 14px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+}
+.sscc-status.is-ok {
+  border-color: var(--interactive-accent);
+}

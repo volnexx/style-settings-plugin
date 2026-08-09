@@ -1,0 +1,9 @@
+{
+  "id": "style-settings-color-cycle",
+  "name": "Style Settings — непрерывная тема",
+  "version": "2.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Непрерывно меняет оттенок темы Minimal по цветовому кругу без набора готовых тем.",
+  "author": "custom",
+  "isDesktopOnly": false
+}

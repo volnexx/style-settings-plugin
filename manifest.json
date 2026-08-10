@@ -1,9 +1,9 @@
 {
   "id": "style-settings-color-cycle",
-  "name": "Style Settings — непрерывная тема",
-  "version": "2.0.0",
+  "name": "Style Settings — 8 тем",
+  "version": "2.2.0",
   "minAppVersion": "1.5.0",
-  "description": "Непрерывно меняет оттенок темы Minimal по цветовому кругу без набора готовых тем.",
+  "description": "Плавно переключает 8 заданных палитр Minimal: длительное удержание темы и короткий переход между соседними темами.",
   "author": "custom",
   "isDesktopOnly": false
 }

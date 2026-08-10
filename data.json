@@ -1,17 +1,16 @@
 {
   "enabled": true,
-  "cycleSeconds": 240,
+  "holdSeconds": 60,
+  "transitionSeconds": 8,
   "fps": 30,
-  "direction": 1,
-  "startHue": 0,
-  "saturation": 100,
-  "accentLightness": 50,
-  "textLightness": 88,
-  "panelTint": 100,
-  "contrastOffset": 180,
-  "animateHeadings": true,
-  "animateLinks": true,
-  "animateGraph": true,
-  "animateTags": true,
-  "animateCode": true
+  "presets": [
+    { "name": "Красная", "json": "" },
+    { "name": "Оранжевая", "json": "" },
+    { "name": "Жёлтая", "json": "" },
+    { "name": "Зелёная", "json": "" },
+    { "name": "Голубая", "json": "{\n  \"minimal-style@@bg1@@dark\": \"#000000\",\n  \"minimal-style@@base@@dark\": \"#000000\",\n  \"minimal-style@@bg2@@dark\": \"#080B0B\",\n  \"minimal-style@@bg3@@dark\": \"#101616\",\n  \"minimal-style@@ui1@@dark\": \"#254040\",\n  \"minimal-style@@ui2@@dark\": \"#408080\",\n  \"minimal-style@@ui3@@dark\": \"#00FFFF\",\n  \"minimal-style@@ax1@@dark\": \"#00FFFF\",\n  \"minimal-style@@ax2@@dark\": \"#FF8080\",\n  \"minimal-style@@ax3@@dark\": \"#C0FFFF\",\n  \"minimal-style@@sp1@@dark\": \"#FF0000\",\n  \"minimal-style@@tx1@@dark\": \"#C0FFFF\",\n  \"minimal-style@@tx2@@dark\": \"#60A0A0\",\n  \"minimal-style@@tx3@@dark\": \"#406060\",\n  \"minimal-style@@link-color@@dark\": \"#00FFFF\",\n  \"minimal-style@@link-color-hover@@dark\": \"#FF4040\",\n  \"minimal-style@@h1-color@@dark\": \"#FF0000\",\n  \"minimal-style@@h2-color@@dark\": \"#FF8080\",\n  \"minimal-style@@h3-color@@dark\": \"#FFC0C0\",\n  \"minimal-style@@h4-color@@dark\": \"#FFC0C0\",\n  \"minimal-style@@h5-color@@dark\": \"#FFC0C0\",\n  \"minimal-style@@h6-color@@dark\": \"#FFC0C0\"\n}" },
+    { "name": "Синяя", "json": "" },
+    { "name": "Фиолетовая", "json": "" },
+    { "name": "Розовая", "json": "" }
+  ]
 }

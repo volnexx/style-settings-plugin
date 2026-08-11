@@ -1,5 +1,16 @@
 const Core = require('./main-core.js');
 
+const CONTRAST_ORDER = [
+  'Красная',
+  'Голубая',
+  'Оранжевая',
+  'Синяя',
+  'Жёлтая',
+  'Фиолетовая',
+  'Зелёная',
+  'Розовая'
+];
+
 module.exports = class PersistedStyleSettingsColorCycle extends Core {
   async onload() {
     this._progressKey = `style-settings-color-cycle-progress:${this.app.vault.getName()}`;
@@ -7,6 +18,7 @@ module.exports = class PersistedStyleSettingsColorCycle extends Core {
     this._resumeState = this._readSavedProgress();
 
     await super.onload();
+    await this._applyContrastThemeOrder();
 
     const saveProgress = () => this._saveProgress();
     this.registerDomEvent(document, 'visibilitychange', () => {
@@ -14,6 +26,30 @@ module.exports = class PersistedStyleSettingsColorCycle extends Core {
     });
     this.registerDomEvent(window, 'pagehide', saveProgress);
     this.registerDomEvent(window, 'beforeunload', saveProgress);
+  }
+
+  async _applyContrastThemeOrder() {
+    if (!this.settings || !Array.isArray(this.settings.presets) || this.settings.presets.length !== 8) return;
+
+    const byName = new Map(this.settings.presets.map(preset => [preset.name, preset]));
+    if (!CONTRAST_ORDER.every(name => byName.has(name))) return;
+
+    const reordered = CONTRAST_ORDER.map(name => byName.get(name));
+    const changed = reordered.some((preset, index) => preset !== this.settings.presets[index]);
+    if (!changed) return;
+
+    const wasRunning = Boolean(this.running);
+    if (wasRunning && typeof this.stopCycle === 'function') this.stopCycle();
+
+    this.settings.presets = reordered;
+    await this.saveData(this.settings);
+
+    this.segmentIndex = 0;
+    this.segmentStart = performance.now();
+    this._resumeApplied = true;
+    this._resumeState = null;
+
+    if (wasRunning && typeof this.startCycle === 'function') this.startCycle();
   }
 
   startCycle() {

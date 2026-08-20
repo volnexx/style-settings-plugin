@@ -1,9 +1,9 @@
 {
   "id": "style-settings-color-cycle",
   "name": "Style Settings — 8 тем",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "minAppVersion": "1.5.0",
-  "description": "Переключает восемь встроенных тем Minimal в случайном контрастном порядке, быстро переходит между ними и сохраняет точную позицию цикла.",
+  "description": "Переключает восемь встроенных тем Minimal в случайном контрастном порядке, сохраняет позицию цикла и синхронизирует палитру с ChatGPT в Custom Frames.",
   "author": "custom",
   "isDesktopOnly": false
 }

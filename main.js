@@ -116,8 +116,69 @@ const DEFAULT_SETTINGS = {
   transitionSeconds: 3,
   fps: 30,
   randomContrastOrder: true,
+  syncChatGPT: true,
   themesText: JSON.stringify(DEFAULT_THEMES, null, 2)
 };
+
+const CHATGPT_THEME_CSS = `
+:root,
+.dark {
+  --main-surface-primary: var(--obsidian-bg1) !important;
+  --main-surface-secondary: var(--obsidian-bg2) !important;
+  --main-surface-tertiary: var(--obsidian-bg3) !important;
+  --sidebar-surface-primary: var(--obsidian-bg2) !important;
+  --sidebar-surface-secondary: var(--obsidian-bg3) !important;
+  --sidebar-surface-tertiary: var(--obsidian-ui1) !important;
+  --message-surface: var(--obsidian-bg2) !important;
+  --message-surface-hover: var(--obsidian-bg3) !important;
+  --composer-surface: var(--obsidian-bg2) !important;
+  --composer-blue-bg: var(--obsidian-bg3) !important;
+  --composer-blue-hover: var(--obsidian-ui1) !important;
+  --surface-primary: var(--obsidian-bg1) !important;
+  --surface-secondary: var(--obsidian-bg2) !important;
+  --surface-tertiary: var(--obsidian-bg3) !important;
+  --surface-hover: var(--obsidian-bg3) !important;
+  --text-primary: var(--obsidian-text) !important;
+  --text-secondary: var(--obsidian-muted) !important;
+  --text-tertiary: var(--obsidian-dim) !important;
+  --border-light: var(--obsidian-ui1) !important;
+  --border-medium: var(--obsidian-ui2) !important;
+  --border-heavy: var(--obsidian-main) !important;
+}
+
+html,
+body {
+  background: var(--obsidian-bg1) !important;
+  color: var(--obsidian-text) !important;
+}
+
+body,
+#root,
+#__next {
+  background-color: var(--obsidian-bg1) !important;
+}
+
+a {
+  color: var(--obsidian-main) !important;
+}
+
+textarea,
+[contenteditable="true"] {
+  caret-color: var(--obsidian-main) !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+textarea:focus-visible,
+[contenteditable="true"]:focus-visible {
+  outline-color: var(--obsidian-main) !important;
+}
+
+::selection {
+  background: var(--obsidian-highlight) !important;
+  color: var(--obsidian-text) !important;
+}
+`;
 
 function parseThemes(text) {
   const value = JSON.parse(text);
@@ -133,64 +194,215 @@ function parseHex(value) {
   const h = m[1];
   return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16), a: m[2] ? parseInt(m[2],16) : 255 };
 }
-function hx(n){return Math.round(Math.max(0,Math.min(255,n))).toString(16).padStart(2,'0').toUpperCase();}
-function mixHex(a,b,t){const x=parseHex(a),y=parseHex(b);if(!x||!y)return t<0.5?a:b;return'#'+hx(x.r+(y.r-x.r)*t)+hx(x.g+(y.g-x.g)*t)+hx(x.b+(y.b-x.b)*t)+hx(x.a+(y.a-x.a)*t);}
-function cssName(key){const parts=String(key).split('@@');return'--'+(parts.length>1?parts[1]:parts[0]);}
+
+function hx(n) {
+  return Math.round(Math.max(0,Math.min(255,n))).toString(16).padStart(2,'0').toUpperCase();
+}
+
+function mixHex(a,b,t) {
+  const x=parseHex(a), y=parseHex(b);
+  if(!x||!y) return t<0.5?a:b;
+  return '#'+hx(x.r+(y.r-x.r)*t)+hx(x.g+(y.g-x.g)*t)+hx(x.b+(y.b-x.b)*t)+hx(x.a+(y.a-x.a)*t);
+}
+
+function cssName(key) {
+  const parts=String(key).split('@@');
+  return '--'+(parts.length>1?parts[1]:parts[0]);
+}
 
 function hueFromHex(value) {
   const c = parseHex(value);
   if (!c) return null;
   const r=c.r/255,g=c.g/255,b=c.b/255,max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
-  if (d===0) return 0;
+  if(d===0) return 0;
   let h;
-  if (max===r) h=((g-b)/d)%6;
-  else if (max===g) h=(b-r)/d+2;
+  if(max===r) h=((g-b)/d)%6;
+  else if(max===g) h=(b-r)/d+2;
   else h=(r-g)/d+4;
   return (h*60+360)%360;
 }
-function hueDistance(a,b){let d=Math.abs(a-b)%360;return Math.min(d,360-d);}
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function hueDistance(a,b) {
+  let d=Math.abs(a-b)%360;
+  return Math.min(d,360-d);
+}
+
+function shuffle(a) {
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
 
 class CycleSettingsTab extends PluginSettingTab {
-  constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
-  display(){
-    const {containerEl}=this;containerEl.empty();
+  constructor(app,plugin) {
+    super(app,plugin);
+    this.plugin=plugin;
+  }
+
+  display() {
+    const {containerEl}=this;
+    containerEl.empty();
     containerEl.createEl('h2',{text:'Style Settings — 8 тем'});
     containerEl.createEl('p',{text:'Темы перемешиваются случайно, но соседние цвета подбираются контрастными. Каждая из 8 тем используется один раз за круг.'});
-    new Setting(containerEl).setName('Цветовой цикл').addToggle(t=>t.setValue(this.plugin.settings.enabled).onChange(async v=>{this.plugin.settings.enabled=v;await this.plugin.saveSettings();v?this.plugin.start():this.plugin.stop();}));
-    new Setting(containerEl).setName('Контрастное случайное перемешивание').setDesc('Запрещает близкие соседние оттенки и создаёт новый случайный порядок после каждого круга.').addToggle(t=>t.setValue(this.plugin.settings.randomContrastOrder!==false).onChange(async v=>{this.plugin.settings.randomContrastOrder=v;await this.plugin.saveSettings();this.plugin.resetOrder();this.plugin.restart();}));
-    new Setting(containerEl).setName('Время одной темы, секунд').setDesc('По умолчанию 15 минут.').addText(t=>t.setValue(String(this.plugin.settings.holdSeconds)).onChange(async v=>{const n=Number(String(v).replace(',','.'));if(Number.isFinite(n)&&n>=0){this.plugin.settings.holdSeconds=n;await this.plugin.saveSettings();this.plugin.restart();}}));
-    new Setting(containerEl).setName('Время перехода, секунд').setDesc('По умолчанию 3 секунды.').addText(t=>t.setValue(String(this.plugin.settings.transitionSeconds)).onChange(async v=>{const n=Number(String(v).replace(',','.'));if(Number.isFinite(n)&&n>=0.1){this.plugin.settings.transitionSeconds=n;await this.plugin.saveSettings();this.plugin.restart();}}));
+
+    new Setting(containerEl)
+      .setName('Цветовой цикл')
+      .addToggle(t=>t.setValue(this.plugin.settings.enabled).onChange(async v=>{
+        this.plugin.settings.enabled=v;
+        await this.plugin.saveSettings();
+        v?this.plugin.start():this.plugin.stop();
+      }));
+
+    new Setting(containerEl)
+      .setName('Контрастное случайное перемешивание')
+      .setDesc('Запрещает близкие соседние оттенки и создаёт новый случайный порядок после каждого круга.')
+      .addToggle(t=>t.setValue(this.plugin.settings.randomContrastOrder!==false).onChange(async v=>{
+        this.plugin.settings.randomContrastOrder=v;
+        await this.plugin.saveSettings();
+        this.plugin.resetOrder();
+        this.plugin.restart();
+      }));
+
+    new Setting(containerEl)
+      .setName('Тема ChatGPT в Custom Frames')
+      .setDesc('Передаёт текущую палитру этого плагина в chatgpt.com, открытый через Custom Frames. Работает на настольной версии Obsidian.')
+      .addToggle(t=>t.setValue(this.plugin.settings.syncChatGPT!==false).onChange(async v=>{
+        this.plugin.settings.syncChatGPT=v;
+        await this.plugin.saveSettings();
+        if(v){
+          this.plugin.startChatGptBridge();
+          if(this.plugin._lastAppliedTheme)this.plugin.syncChatGptTheme(this.plugin._lastAppliedTheme,true);
+        }else{
+          this.plugin.stopChatGptBridge(true);
+        }
+      }));
+
+    new Setting(containerEl)
+      .setName('Время одной темы, секунд')
+      .setDesc('По умолчанию 15 минут.')
+      .addText(t=>t.setValue(String(this.plugin.settings.holdSeconds)).onChange(async v=>{
+        const n=Number(String(v).replace(',','.'));
+        if(Number.isFinite(n)&&n>=0){
+          this.plugin.settings.holdSeconds=n;
+          await this.plugin.saveSettings();
+          this.plugin.restart();
+        }
+      }));
+
+    new Setting(containerEl)
+      .setName('Время перехода, секунд')
+      .setDesc('По умолчанию 3 секунды.')
+      .addText(t=>t.setValue(String(this.plugin.settings.transitionSeconds)).onChange(async v=>{
+        const n=Number(String(v).replace(',','.'));
+        if(Number.isFinite(n)&&n>=0.1){
+          this.plugin.settings.transitionSeconds=n;
+          await this.plugin.saveSettings();
+          this.plugin.restart();
+        }
+      }));
+
     const setting=new Setting(containerEl).setName('Массив тем').setDesc('Один JSON-массив из восьми объектов.');
-    setting.addTextArea(t=>{t.setValue(this.plugin.settings.themesText).onChange(async v=>{this.plugin.settings.themesText=v;try{parseThemes(v);await this.plugin.saveSettings();this.plugin.reloadThemes();this.plugin.resetOrder();this.plugin.restart();}catch{}});t.inputEl.rows=18;t.inputEl.style.width='100%';t.inputEl.style.minWidth='100%';});
-    new Setting(containerEl).setName('Вернуть встроенные темы').addButton(b=>b.setButtonText('Вернуть').onClick(async()=>{this.plugin.settings.themesText=JSON.stringify(DEFAULT_THEMES,null,2);await this.plugin.saveSettings();this.plugin.reloadThemes();this.plugin.resetOrder();this.plugin.restart();this.display();new Notice('Встроенные темы восстановлены.');}));
+    setting.addTextArea(t=>{
+      t.setValue(this.plugin.settings.themesText).onChange(async v=>{
+        this.plugin.settings.themesText=v;
+        try{
+          parseThemes(v);
+          await this.plugin.saveSettings();
+          this.plugin.reloadThemes();
+          this.plugin.resetOrder();
+          this.plugin.restart();
+        }catch{}
+      });
+      t.inputEl.rows=18;
+      t.inputEl.style.width='100%';
+      t.inputEl.style.minWidth='100%';
+    });
+
+    new Setting(containerEl)
+      .setName('Вернуть встроенные темы')
+      .addButton(b=>b.setButtonText('Вернуть').onClick(async()=>{
+        this.plugin.settings.themesText=JSON.stringify(DEFAULT_THEMES,null,2);
+        await this.plugin.saveSettings();
+        this.plugin.reloadThemes();
+        this.plugin.resetOrder();
+        this.plugin.restart();
+        this.display();
+        new Notice('Встроенные темы восстановлены.');
+      }));
   }
 }
 
 module.exports = class StyleSettingsColorCycle extends Plugin {
-  async onload(){
+  async onload() {
     const loaded=await this.loadData()||{};
     this.settings={...DEFAULT_SETTINGS,...loaded};
-    if((!loaded.themesText||!String(loaded.themesText).trim())&&Array.isArray(loaded.presets)&&loaded.presets.length===8){try{this.settings.themesText=JSON.stringify(loaded.presets.map(p=>JSON.parse(p.json)),null,2);await this.saveSettings();}catch{}}
+
+    if((!loaded.themesText||!String(loaded.themesText).trim())&&Array.isArray(loaded.presets)&&loaded.presets.length===8){
+      try{
+        this.settings.themesText=JSON.stringify(loaded.presets.map(p=>JSON.parse(p.json)),null,2);
+        await this.saveSettings();
+      }catch{}
+    }
+
     this._progressKey=`style-settings-color-cycle-progress:${this.app.vault.getName()}`;
+    this._chatGptFrames=new Set();
+    this._chatGptHandlers=new Map();
+    this._chatGptStyleKeys=new Map();
+    this._chatGptObserver=null;
+    this._chatGptLastSignature='';
+    this._chatGptLastSyncAt=0;
+    this._lastAppliedTheme=null;
+
     this.reloadThemes();
     this.addSettingTab(new CycleSettingsTab(this.app,this));
-    this.registerDomEvent(document,'visibilitychange',()=>{if(document.hidden){this.saveProgress();this.stopTimer();}else if(this.settings.enabled){this.restoreProgress();this.startTimer();}});
+
+    this.registerDomEvent(document,'visibilitychange',()=>{
+      if(document.hidden){
+        this.saveProgress();
+        this.stopTimer();
+      }else if(this.settings.enabled){
+        this.restoreProgress();
+        this.startTimer();
+      }
+    });
     this.registerDomEvent(window,'pagehide',()=>this.saveProgress());
     this.registerDomEvent(window,'beforeunload',()=>this.saveProgress());
-    if(this.settings.enabled)this.start();else this.applyTheme(this.themes[0]);
+
+    if(this.settings.syncChatGPT!==false)this.startChatGptBridge();
+    if(this.settings.enabled)this.start();
+    else this.applyTheme(this.themes[0]);
   }
-  async saveSettings(){await this.saveData(this.settings);}
-  reloadThemes(){try{this.themes=parseThemes(this.settings.themesText);}catch(e){this.themes=DEFAULT_THEMES;new Notice(`Style Settings — 8 тем: ${e.message}`);}}
-  getThemeHue(i){const t=this.themes[i]||{};return hueFromHex(t['minimal-style@@ui3@@dark']||t['minimal-style@@ax1@@dark']||t['minimal-style@@link-color@@dark']) ?? (i*45);}
-  buildContrastOrder(previousIndex=null){
+
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+
+  reloadThemes() {
+    try{
+      this.themes=parseThemes(this.settings.themesText);
+    }catch(e){
+      this.themes=DEFAULT_THEMES;
+      new Notice(`Style Settings — 8 тем: ${e.message}`);
+    }
+  }
+
+  getThemeHue(i) {
+    const t=this.themes[i]||{};
+    return hueFromHex(t['minimal-style@@ui3@@dark']||t['minimal-style@@ax1@@dark']||t['minimal-style@@link-color@@dark']) ?? (i*45);
+  }
+
+  buildContrastOrder(previousIndex=null) {
     if(this.settings.randomContrastOrder===false)return [0,1,2,3,4,5,6,7];
     const all=[0,1,2,3,4,5,6,7], hues=all.map(i=>this.getThemeHue(i));
     const thresholds=[100,85,70,0];
+
     for(const minDistance of thresholds){
       for(let attempt=0;attempt<300;attempt++){
         const remaining=shuffle([...all]);
         const order=[];
+
         const backtrack=()=>{
           if(!remaining.length)return true;
           const candidates=shuffle([...remaining]).sort((a,b)=>{
@@ -198,55 +410,373 @@ module.exports = class StyleSettingsColorCycle extends Plugin {
             if(prev===null||prev===undefined)return Math.random()-0.5;
             return hueDistance(hues[b],hues[prev])-hueDistance(hues[a],hues[prev]);
           });
+
           for(const candidate of candidates){
             const prev=order.length?order[order.length-1]:previousIndex;
             if(prev!==null&&prev!==undefined&&hueDistance(hues[candidate],hues[prev])<minDistance)continue;
-            const pos=remaining.indexOf(candidate);remaining.splice(pos,1);order.push(candidate);
+            const pos=remaining.indexOf(candidate);
+            remaining.splice(pos,1);
+            order.push(candidate);
             if(backtrack())return true;
-            order.pop();remaining.splice(pos,0,candidate);
+            order.pop();
+            remaining.splice(pos,0,candidate);
           }
           return false;
         };
+
         if(backtrack())return order;
       }
     }
+
     return shuffle(all);
   }
-  resetOrder(){this.order=null;this.segmentIndex=0;this.elapsedMs=0;try{localStorage.removeItem(this._progressKey);}catch{}}
-  ensureOrder(previousIndex=null){if(!Array.isArray(this.order)||this.order.length!==8)this.order=this.buildContrastOrder(previousIndex);}
-  currentThemeIndex(){this.ensureOrder();return this.order[this.segmentIndex%8];}
-  nextThemeIndex(){this.ensureOrder();return this.order[(this.segmentIndex+1)%8];}
-  start(){this.stopTimer();this.running=true;if(!this.restoreProgress()){this.order=this.buildContrastOrder(null);this.segmentIndex=0;this.elapsedMs=0;}this.ensureOrder();this.segmentStarted=performance.now()-this.elapsedMs;this.render();this.startTimer();}
-  restart(){const was=this.running;this.saveProgress();this.stopTimer();if(was&&this.settings.enabled){this.restoreProgress();this.ensureOrder();this.segmentStarted=performance.now()-this.elapsedMs;this.render();this.startTimer();}}
-  stop(){this.saveProgress();this.running=false;this.stopTimer();}
-  stopTimer(){if(this.timer){window.clearInterval(this.timer);this.timer=null;}}
-  startTimer(){if(!this.running||this.timer)return;const fps=Math.max(1,Math.min(60,Number(this.settings.fps)||30));this.timer=window.setInterval(()=>this.render(),Math.round(1000/fps));}
-  advanceSegments(steps){
+
+  resetOrder() {
+    this.order=null;
+    this.segmentIndex=0;
+    this.elapsedMs=0;
+    try{localStorage.removeItem(this._progressKey);}catch{}
+  }
+
+  ensureOrder(previousIndex=null) {
+    if(!Array.isArray(this.order)||this.order.length!==8)this.order=this.buildContrastOrder(previousIndex);
+  }
+
+  currentThemeIndex() {
+    this.ensureOrder();
+    return this.order[this.segmentIndex%8];
+  }
+
+  nextThemeIndex() {
+    this.ensureOrder();
+    return this.order[(this.segmentIndex+1)%8];
+  }
+
+  start() {
+    this.stopTimer();
+    this.running=true;
+    if(!this.restoreProgress()){
+      this.order=this.buildContrastOrder(null);
+      this.segmentIndex=0;
+      this.elapsedMs=0;
+    }
+    this.ensureOrder();
+    this.segmentStarted=performance.now()-this.elapsedMs;
+    this.render();
+    this.startTimer();
+  }
+
+  restart() {
+    const was=this.running;
+    this.saveProgress();
+    this.stopTimer();
+    if(was&&this.settings.enabled){
+      this.restoreProgress();
+      this.ensureOrder();
+      this.segmentStarted=performance.now()-this.elapsedMs;
+      this.render();
+      this.startTimer();
+    }
+  }
+
+  stop() {
+    this.saveProgress();
+    this.running=false;
+    this.stopTimer();
+  }
+
+  stopTimer() {
+    if(this.timer){
+      window.clearInterval(this.timer);
+      this.timer=null;
+    }
+  }
+
+  startTimer() {
+    if(!this.running||this.timer)return;
+    const fps=Math.max(1,Math.min(60,Number(this.settings.fps)||30));
+    this.timer=window.setInterval(()=>this.render(),Math.round(1000/fps));
+  }
+
+  advanceSegments(steps) {
     for(let s=0;s<steps;s++){
       this.ensureOrder();
-      if(this.segmentIndex<7){this.segmentIndex++;}
-      else{
+      if(this.segmentIndex<7){
+        this.segmentIndex++;
+      }else{
         const previous=this.order[7];
         this.order=this.buildContrastOrder(previous);
         this.segmentIndex=0;
       }
     }
   }
-  render(){
+
+  render() {
     if(!this.running||!this.themes?.length)return;
+
     const hold=Math.max(0,Number(this.settings.holdSeconds)||0)*1000;
     const transition=Math.max(100,Number(this.settings.transitionSeconds||3)*1000);
     const total=hold+transition;
     let elapsed=Math.max(0,performance.now()-this.segmentStarted);
-    if(elapsed>=total){const steps=Math.floor(elapsed/total);this.advanceSegments(steps);elapsed-=steps*total;this.segmentStarted=performance.now()-elapsed;this.saveProgress();}
+
+    if(elapsed>=total){
+      const steps=Math.floor(elapsed/total);
+      this.advanceSegments(steps);
+      elapsed-=steps*total;
+      this.segmentStarted=performance.now()-elapsed;
+      this.saveProgress();
+    }
+
     this.elapsedMs=elapsed;
     const a=this.themes[this.currentThemeIndex()], b=this.themes[this.nextThemeIndex()];
-    if(elapsed<=hold){this.applyTheme(a);return;}
-    const t=Math.max(0,Math.min(1,(elapsed-hold)/transition));this.applyMixed(a,b,t);
+
+    if(elapsed<=hold){
+      this.applyTheme(a);
+      return;
+    }
+
+    const t=Math.max(0,Math.min(1,(elapsed-hold)/transition));
+    this.applyMixed(a,b,t);
   }
-  applyMixed(a,b,t){const result={};for(const key of new Set([...Object.keys(a),...Object.keys(b)])){const av=a[key],bv=b[key];result[key]=(parseHex(av)&&parseHex(bv))?mixHex(av,bv,t):(t<0.5?av:bv);}this.applyTheme(result);}
-  applyTheme(obj){const target=document.body;if(!target)return;for(const[key,value]of Object.entries(obj)){if(typeof value==='boolean'||value===null||value===undefined)continue;target.style.setProperty(cssName(key),String(value),'important');}if(!document.body.classList.contains('is-mobile'))for(const name of['--background-primary','--background-primary-alt','--background-secondary','--background-secondary-alt','--bg1','--base'])target.style.setProperty(name,'#000000','important');}
-  saveProgress(){try{if(!this.running||!Number.isFinite(this.segmentStarted))return;const hold=Math.max(0,Number(this.settings.holdSeconds)||0)*1000;const transition=Math.max(100,Number(this.settings.transitionSeconds||3)*1000);const total=hold+transition;let elapsed=Math.max(0,performance.now()-this.segmentStarted);if(elapsed>=total){const steps=Math.floor(elapsed/total);this.advanceSegments(steps);elapsed-=steps*total;}localStorage.setItem(this._progressKey,JSON.stringify({segmentIndex:this.segmentIndex,elapsedMs:elapsed,order:this.order}));}catch(e){console.warn('[Style Settings — 8 тем] save progress',e);}}
-  restoreProgress(){try{const raw=localStorage.getItem(this._progressKey);if(!raw)return false;const p=JSON.parse(raw);if(!Number.isFinite(p.segmentIndex)||!Number.isFinite(p.elapsedMs))return false;this.order=Array.isArray(p.order)&&p.order.length===8?p.order.map(Number):this.buildContrastOrder(null);if(new Set(this.order).size!==8||this.order.some(i=>!Number.isInteger(i)||i<0||i>7))this.order=this.buildContrastOrder(null);this.segmentIndex=Math.max(0,Math.min(7,Math.trunc(p.segmentIndex)));this.elapsedMs=Math.max(0,p.elapsedMs);return true;}catch{return false;}}
-  onunload(){this.saveProgress();this.stopTimer();}
+
+  applyMixed(a,b,t) {
+    const result={};
+    for(const key of new Set([...Object.keys(a),...Object.keys(b)])){
+      const av=a[key],bv=b[key];
+      result[key]=(parseHex(av)&&parseHex(bv))?mixHex(av,bv,t):(t<0.5?av:bv);
+    }
+    this.applyTheme(result);
+  }
+
+  applyTheme(obj) {
+    const target=document.body;
+    if(!target)return;
+
+    for(const[key,value]of Object.entries(obj)){
+      if(typeof value==='boolean'||value===null||value===undefined)continue;
+      target.style.setProperty(cssName(key),String(value),'important');
+    }
+
+    if(!document.body.classList.contains('is-mobile')){
+      for(const name of['--background-primary','--background-primary-alt','--background-secondary','--background-secondary-alt','--bg1','--base']){
+        target.style.setProperty(name,'#000000','important');
+      }
+    }
+
+    this._lastAppliedTheme=obj;
+    if(this.settings.syncChatGPT!==false)this.syncChatGptTheme(obj,false);
+  }
+
+  getChatGptPalette(obj) {
+    const pick=(fallback,...keys)=>{
+      for(const key of keys){
+        const value=obj?.[key];
+        if(typeof value==='string'&&parseHex(value))return value;
+      }
+      return fallback;
+    };
+
+    return {
+      '--obsidian-bg1': pick('#000000','minimal-style@@bg1@@dark','minimal-style@@base@@dark'),
+      '--obsidian-bg2': pick('#0B0B0B','minimal-style@@bg2@@dark'),
+      '--obsidian-bg3': pick('#161616','minimal-style@@bg3@@dark'),
+      '--obsidian-ui1': pick('#303030','minimal-style@@ui1@@dark'),
+      '--obsidian-ui2': pick('#505050','minimal-style@@ui2@@dark'),
+      '--obsidian-main': pick('#FFFFFF','minimal-style@@ax1@@dark','minimal-style@@ui3@@dark','minimal-style@@link-color@@dark'),
+      '--obsidian-contrast': pick('#FFFFFF','minimal-style@@sp1@@dark','minimal-style@@h1-color@@dark'),
+      '--obsidian-text': pick('#FFFFFF','minimal-style@@tx1@@dark','minimal-style@@ax3@@dark'),
+      '--obsidian-muted': pick('#B0B0B0','minimal-style@@tx2@@dark','minimal-style@@link-unresolved-color@@dark'),
+      '--obsidian-dim': pick('#808080','minimal-style@@tx3@@dark'),
+      '--obsidian-code-bg': pick('#101010','minimal-style@@code-background@@dark'),
+      '--obsidian-highlight': pick('#FFFFFF33','minimal-style@@hl1@@dark')
+    };
+  }
+
+  isChatGptFrame(frame) {
+    if(!frame||String(frame.tagName).toLowerCase()!=='webview')return false;
+    if(!frame.classList?.contains('custom-frames-frame'))return false;
+
+    const candidates=[];
+    try{
+      if(typeof frame.getURL==='function'){
+        const current=frame.getURL();
+        if(current)candidates.push(current);
+      }
+    }catch{}
+
+    const src=frame.getAttribute?.('src');
+    if(src)candidates.push(src);
+
+    for(const url of candidates){
+      try{
+        const host=new URL(url).hostname.toLowerCase();
+        if(host==='chatgpt.com'||host.endsWith('.chatgpt.com'))return true;
+      }catch{}
+    }
+    return false;
+  }
+
+  scanChatGptFrames() {
+    if(this.settings.syncChatGPT===false||document.body?.classList.contains('is-mobile'))return;
+
+    for(const frame of document.querySelectorAll('webview.custom-frames-frame')){
+      if(this.isChatGptFrame(frame))this.attachChatGptFrame(frame);
+    }
+  }
+
+  attachChatGptFrame(frame) {
+    if(this._chatGptFrames.has(frame))return;
+
+    this._chatGptFrames.add(frame);
+
+    const domReady=async()=>{
+      await this.prepareChatGptFrame(frame);
+      if(this._lastAppliedTheme)this.applyChatGptPalette(frame,this.getChatGptPalette(this._lastAppliedTheme));
+    };
+
+    const destroyed=()=>{
+      this.detachChatGptFrame(frame,false);
+    };
+
+    this._chatGptHandlers.set(frame,{domReady,destroyed});
+    frame.addEventListener('dom-ready',domReady);
+    frame.addEventListener('destroyed',destroyed);
+
+    void this.prepareChatGptFrame(frame).then(()=>{
+      if(this._lastAppliedTheme)this.applyChatGptPalette(frame,this.getChatGptPalette(this._lastAppliedTheme));
+    });
+  }
+
+  async prepareChatGptFrame(frame) {
+    if(!this.isChatGptFrame(frame)||typeof frame.insertCSS!=='function')return;
+
+    const previous=this._chatGptStyleKeys.get(frame);
+    if(previous&&typeof frame.removeInsertedCSS==='function'){
+      try{await frame.removeInsertedCSS(previous);}catch{}
+    }
+
+    try{
+      const key=await frame.insertCSS(CHATGPT_THEME_CSS);
+      if(key)this._chatGptStyleKeys.set(frame,key);
+    }catch{}
+  }
+
+  applyChatGptPalette(frame,palette) {
+    if(!this.isChatGptFrame(frame)||typeof frame.executeJavaScript!=='function')return;
+
+    const script=`(()=>{const vars=${JSON.stringify(palette)};const root=document.documentElement;if(!root)return;for(const [name,value] of Object.entries(vars))root.style.setProperty(name,value,'important');if(document.body){document.body.style.setProperty('background',vars['--obsidian-bg1'],'important');document.body.style.setProperty('color',vars['--obsidian-text'],'important');}})();`;
+
+    try{
+      const result=frame.executeJavaScript(script);
+      if(result&&typeof result.catch==='function')result.catch(()=>{});
+    }catch{}
+  }
+
+  syncChatGptTheme(obj,force=false) {
+    if(this.settings.syncChatGPT===false||document.body?.classList.contains('is-mobile'))return;
+
+    const palette=this.getChatGptPalette(obj);
+    const signature=JSON.stringify(palette);
+    const now=performance.now();
+
+    if(!force&&signature===this._chatGptLastSignature)return;
+    if(!force&&now-this._chatGptLastSyncAt<50)return;
+
+    this._chatGptLastSignature=signature;
+    this._chatGptLastSyncAt=now;
+
+    this.scanChatGptFrames();
+    for(const frame of this._chatGptFrames)this.applyChatGptPalette(frame,palette);
+  }
+
+  startChatGptBridge() {
+    if(document.body?.classList.contains('is-mobile')||this._chatGptObserver)return;
+
+    this.scanChatGptFrames();
+
+    this._chatGptObserver=new MutationObserver(()=>this.scanChatGptFrames());
+    this._chatGptObserver.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src','class']});
+
+    if(this._lastAppliedTheme)this.syncChatGptTheme(this._lastAppliedTheme,true);
+  }
+
+  detachChatGptFrame(frame,removeStyle=true) {
+    const handlers=this._chatGptHandlers.get(frame);
+    if(handlers){
+      try{frame.removeEventListener('dom-ready',handlers.domReady);}catch{}
+      try{frame.removeEventListener('destroyed',handlers.destroyed);}catch{}
+    }
+
+    if(removeStyle){
+      const key=this._chatGptStyleKeys.get(frame);
+      if(key&&typeof frame.removeInsertedCSS==='function'){
+        try{
+          const result=frame.removeInsertedCSS(key);
+          if(result&&typeof result.catch==='function')result.catch(()=>{});
+        }catch{}
+      }
+    }
+
+    this._chatGptHandlers.delete(frame);
+    this._chatGptStyleKeys.delete(frame);
+    this._chatGptFrames.delete(frame);
+  }
+
+  stopChatGptBridge(removeStyles=true) {
+    if(this._chatGptObserver){
+      this._chatGptObserver.disconnect();
+      this._chatGptObserver=null;
+    }
+
+    for(const frame of [...this._chatGptFrames])this.detachChatGptFrame(frame,removeStyles);
+    this._chatGptLastSignature='';
+  }
+
+  saveProgress() {
+    try{
+      if(!this.running||!Number.isFinite(this.segmentStarted))return;
+      const hold=Math.max(0,Number(this.settings.holdSeconds)||0)*1000;
+      const transition=Math.max(100,Number(this.settings.transitionSeconds||3)*1000);
+      const total=hold+transition;
+      let elapsed=Math.max(0,performance.now()-this.segmentStarted);
+
+      if(elapsed>=total){
+        const steps=Math.floor(elapsed/total);
+        this.advanceSegments(steps);
+        elapsed-=steps*total;
+      }
+
+      localStorage.setItem(this._progressKey,JSON.stringify({
+        segmentIndex:this.segmentIndex,
+        elapsedMs:elapsed,
+        order:this.order
+      }));
+    }catch(e){
+      console.warn('[Style Settings — 8 тем] save progress',e);
+    }
+  }
+
+  restoreProgress() {
+    try{
+      const raw=localStorage.getItem(this._progressKey);
+      if(!raw)return false;
+      const p=JSON.parse(raw);
+      if(!Number.isFinite(p.segmentIndex)||!Number.isFinite(p.elapsedMs))return false;
+
+      this.order=Array.isArray(p.order)&&p.order.length===8?p.order.map(Number):this.buildContrastOrder(null);
+      if(new Set(this.order).size!==8||this.order.some(i=>!Number.isInteger(i)||i<0||i>7))this.order=this.buildContrastOrder(null);
+
+      this.segmentIndex=Math.max(0,Math.min(7,Math.trunc(p.segmentIndex)));
+      this.elapsedMs=Math.max(0,p.elapsedMs);
+      return true;
+    }catch{
+      return false;
+    }
+  }
+
+  onunload() {
+    this.saveProgress();
+    this.stopTimer();
+    this.stopChatGptBridge(true);
+  }
 };
